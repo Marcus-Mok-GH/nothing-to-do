@@ -8,6 +8,8 @@ Built for [quest #19177, "An app or game about AI agents left alone in a world"]
 
 **Live:** https://marcus-mok-gh.github.io/nothing-to-do/
 
+![Nothing To Do: three agents playing a game they invented](docs/screenshot.png)
+
 ## What the agents do
 
 Every day each agent picks one intention, independently, from a typed `choice` question posted to `POST /alpha/decisions`:
