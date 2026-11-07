@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nothing To Do — three agents invent their own games</title>
+<meta name="description" content="Three AI agents wake up in an empty world with no tasks, no goals, and no one to instruct them. Day by day they get bored, invent games, argue over rules, and wander off. Built on Pollinations decision models, paid with your own Pollen." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌾</text></svg>" />
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --panel: #111420;
+    --panel-2: #171b29;
+    --line: #262d40;
+    --text: #e9edf8;
+    --dim: #98a1b8;
+    --a: #7dd3c0;
+    --b: #f0a868;
+    --c: #a78bfa;
+    --gold: #f5c451;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px 14px 46px;
+    background:
+      radial-gradient(900px 520px at 50% -12%, rgba(125,211,192,.10), transparent 62%),
+      radial-gradient(700px 420px at 88% 8%, rgba(167,139,250,.09), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1020px; margin: 0 auto; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .brand { display: flex; gap: 10px; align-items: center; }
+  .logo { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(145deg,#1d2333,#0d1017); border: 1px solid var(--line); }
+  h1 { font-size: 19px; margin: 0; }
+  .tag { font-size: 12px; color: var(--dim); }
+  .slot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .pill { font-size: 12px; color: var(--dim); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; background: var(--panel); }
+
+  .world {
+    position: relative; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    background:
+      radial-gradient(420px 200px at 50% 120%, rgba(125,211,192,.07), transparent 70%),
+      linear-gradient(180deg, #0d1119, #0a0d14);
+    padding: 18px 16px 12px; margin-bottom: 14px;
+  }
+  .skyline { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--dim); margin-bottom: 6px; }
+  .field { position: relative; height: 230px; }
+  .field .ground { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; border-top: 1px dashed var(--line); }
+  .agent {
+    position: absolute; transform: translate(-50%, -50%); text-align: center; transition: top .7s cubic-bezier(.2,.8,.2,1), left .7s cubic-bezier(.2,.8,.2,1);
+    width: 92px;
+  }
+  .agent .fig { width: 34px; height: 34px; margin: 0 auto 4px; border-radius: 12px; display: grid; place-items: center; font-size: 15px; background: #0b0e15; border: 1px solid var(--line); }
+  .agent .nm { font-size: 11px; color: var(--text); font-weight: 600; }
+  .agent .st { font-size: 10px; color: var(--dim); }
+  .agent.playing .fig { border-color: var(--a); box-shadow: 0 0 14px rgba(125,211,192,.35); }
+  .agent.off .fig { opacity: .45; }
+
+  .pastime {
+    position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
+    width: min(420px, 76%); text-align: center; padding: 12px 14px;
+    border: 1px solid var(--line); border-radius: 14px; background: rgba(12,15,23,.9);
+    backdrop-filter: blur(3px);
+  }
+  .pastime.none { border-style: dashed; color: var(--dim); }
+  .pastime h2 { margin: 0 0 4px; font-size: 16px; letter-spacing: .2px; }
+  .pastime .none-msg { font-size: 13px; }
+  .pastime ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; text-align: left; }
+  .pastime li { font-size: 12.5px; color: #ccd4e6; padding-left: 14px; position: relative; }
+  .pastime li::before { content: "rule"; position: absolute; left: -2px; font-size: 8px; color: var(--dim); top: 3px; text-transform: uppercase; letter-spacing: .08em; }
+  .pastime li { padding-left: 30px; }
+
+  .controls { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 12px; }
+  .btn {
+    background: #0b0e15; color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 13px; font: inherit; font-size: 14px; cursor: pointer; transition: transform .06s, border-color .15s;
+  }
+  .btn:hover:not(:disabled) { border-color: #3a4359; transform: translateY(-1px); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.primary { background: linear-gradient(180deg,#1f2b3f,#151c2b); border-color: #33425c; font-weight: 600; }
+  .btn:focus-visible, select:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
+  select { background: #0b0e15; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; font: inherit; font-size: 14px; max-width: 260px; }
+
+  .grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 14px; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .card { border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, var(--panel), var(--panel-2)); padding: 14px; }
+  .card h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--dim); }
+
+  .mind { display: flex; flex-direction: column; gap: 10px; }
+  .mind .row { display: grid; grid-template-columns: 74px 1fr; gap: 10px; align-items: center; }
+  .mind .who { font-size: 12px; font-weight: 600; }
+  .needs { display: flex; flex-direction: column; gap: 4px; }
+  .need { display: grid; grid-template-columns: 62px 1fr 30px; gap: 8px; align-items: center; font-size: 11px; color: var(--dim); }
+  .need .track { height: 6px; border-radius: 999px; background: #0a0d13; border: 1px solid var(--line); overflow: hidden; }
+  .need .track > i { display: block; height: 100%; width: 0; transition: width .5s ease; }
+  .need.bored .track > i { background: linear-gradient(90deg, #6b5220, var(--gold)); }
+  .need.keen .track > i { background: linear-gradient(90deg, #2f8f88, var(--a)); }
+  .pick { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+  .log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; max-height: 430px; overflow: auto; }
+  .log li { border-left: 3px solid var(--line); padding: 5px 0 5px 11px; font-size: 13.5px; color: #cfd6e7; }
+  .log li.day { border-left-color: var(--a); }
+  .log li.invent { border-left-color: var(--gold); }
+  .log li .d { color: var(--dim); font-size: 11.5px; margin-right: 7px; text-transform: uppercase; letter-spacing: .08em; }
+  .notice { border: 1px solid #4a3718; background: rgba(245,196,81,.08); color: #f0dca8; border-radius: 12px; padding: 10px 12px; font-size: 13px; margin-top: 12px; }
+  .notice.err { border-color: #5a2626; background: rgba(240,133,122,.09); color: #f4c0ba; }
+  .talk { margin-top: 10px; font-size: 13px; color: #d8dfef; white-space: pre-wrap; }
+  footer { margin-top: 18px; color: var(--dim); font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+  footer a { color: #9fc6ff; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">🌾</div>
+      <div>
+        <h1>Nothing To Do</h1>
+        <div class="tag">Three agents. No tasks. No goals. Nobody telling them what to want.</div>
+      </div>
+    </div>
+    <div class="slot">
+      <span class="pill" id="pollen">No Pollen connected</span>
+      <div id="connect-mount"></div>
+    </div>
+  </header>
+
+  <section class="world">
+    <div class="skyline">
+      <span id="day-label">Day 1</span>
+      <span id="world-mood">the world is empty</span>
+    </div>
+    <div class="field" id="field">
+      <div class="ground"></div>
+      <div class="pastime none" id="pastime">
+        <h2 id="pastime-name">nothing yet</h2>
+        <div class="none-msg" id="pastime-msg">They have nothing to do and no one to please.</div>
+        <ul id="pastime-rules"></ul>
+      </div>
+    </div>
+    <div class="controls">
+      <select id="mind-model" aria-label="Model behind their minds"></select>
+      <button class="btn primary" id="advance">Advance a day</button>
+      <button class="btn" id="auto">Let them keep going</button>
+      <button class="btn" id="talk" disabled>Let them talk</button>
+      <button class="btn" id="reset" disabled>New world</button>
+    </div>
+    <div id="notice" class="notice" hidden></div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h3>Their minds</h3>
+      <div class="mind" id="minds"></div>
+    </section>
+    <section class="card">
+      <h3>What happened</h3>
+      <ul class="log" id="log"></ul>
+      <div class="talk" id="talk-out"></div>
+    </section>
+  </div>
+
+  <footer>
+    <span>Decision models by <a href="https://pollinations.ai" target="_blank" rel="noopener">Pollinations</a>. Your own Pollen pays for it.</span>
+    <a href="https://github.com/pollinations/pollinations/issues/19177" target="_blank" rel="noopener">Quest #19177</a>
+    <a href="https://github.com/Marcus-Mok-GH/nothing-to-do" target="_blank" rel="noopener">Source</a>
+  </footer>
+</div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/@pollinations/ui@0.1.0-alpha.20/dist/connect.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ── Config ────────────────────────────────────────────────────────────────
+  // Publishable App Key (safe in client code). This page's URL must be listed as
+  // a Redirect URI on the key at enter.pollinations.ai → Keys → Apps.
+  var APP_KEY = "";
+  var API = "https://gen.pollinations.ai";
+  var BUDGET = 10;
+  var EXPIRY = 7;
+  var STORE = "nothing-to-do:v1";
+  var MAX_RULES = 4;
+  var MAX_DAYS = 60;
+
+  var AGENTS = [
+    { id: "sable", name: "Sable", glyph: "◍", trait: "restless, invents first and explains later, hates being bored" },
+    { id: "otto", name: "Otto", glyph: "▲", trait: "careful, joins what looks fair, will argue about a rule before playing" },
+    { id: "wren", name: "Wren", glyph: "❉", trait: "drifter, plays only while it is interesting, wanders off to look at the horizon" }
+  ];
+
+  var CHOICES = {
+    invent: { label: "Invent a game", blurb: "Start something new, because there is nothing else to do" },
+    join: { label: "Join in", blurb: "Take part in the game that already exists" },
+    revise: { label: "Argue a rule", blurb: "Add or change one rule of the current game" },
+    wander: { label: "Wander off", blurb: "Leave the others and go look at the empty world" },
+    rest: { label: "Do nothing", blurb: "Sit down and let the day pass" }
+  };
+
+  var GAME_WORDS_A = ["the long", "the quiet", "the crooked", "the borrowed", "the glass", "the seven", "the late", "the hollow"];
+  var GAME_WORDS_B = ["circle", "ladder", "pact", "stone", "river", "hand", "hour", "window"];
+  var RULES = [
+    "Whoever speaks first loses the round.",
+    "You may only move after someone else looks away.",
+    "The last one to laugh keeps the point.",
+    "No one may use their own name.",
+    "A move made in silence counts twice.",
+    "If two players agree, the third decides.",
+    "You cannot win twice in a row.",
+    "Points go to whoever quits at the right moment.",
+    "Every player must break one rule, and never say which.",
+    "Turn order is decided by who is least interested."
+  ];
+
+  var FALLBACK_MODELS = [
+    { name: "typesafe/jev-1.14", title: "Jev 1.14" },
+    { name: "jaredpalmer/kev-4b", title: "Kev 4B" },
+    { name: "microsoft/microsoft-decision-1", title: "Microsoft-Decision-1" },
+    { name: "perplexity/pplx-decider-v1.2", title: "Decider v1.2" },
+    { name: "vllm-sr/d3", title: "D3" }
+  ];
+
+  var state = {
+    apiKey: null,
+    models: FALLBACK_MODELS.slice(),
+    day: 1,
+    game: null,           // { name, rules: [], startedBy, bornDay }
+    agents: AGENTS.map(function (a, i) {
+      return { id: a.id, name: a.name, glyph: a.glyph, trait: a.trait, boredom: 55 + i * 7, playing: false, last: null, x: 30 + i * 20, y: 60 };
+    }),
+    lastVisit: null,
+    busy: false
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ── Persistence ───────────────────────────────────────────────────────────
+  function save() {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({
+        day: state.day, game: state.game, agents: state.agents, lastVisit: Date.now()
+      }));
+    } catch (e) {}
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (!d || !Array.isArray(d.agents)) return null;
+      return d;
+    } catch (e) { return null; }
+  }
+
+  // ── BYOP ──────────────────────────────────────────────────────────────────
+  function mountConnect() {
+    var mount = $("connect-mount");
+    mount.innerHTML = "";
+    if (!APP_KEY) {
+      var hint = document.createElement("span");
+      hint.className = "pill";
+      hint.textContent = "App key not configured";
+      mount.appendChild(hint);
+      return;
+    }
+    if (state.apiKey) {
+      var out = document.createElement("button");
+      out.className = "btn";
+      out.textContent = "Disconnect";
+      out.onclick = function () {
+        state.apiKey = null;
+        $("pollen").textContent = "No Pollen connected";
+        mountConnect();
+        render();
+      };
+      mount.appendChild(out);
+      return;
+    }
+    var el = document.createElement("polli-connect");
+    el.setAttribute("app-key", APP_KEY);
+    el.setAttribute("budget", String(BUDGET));
+    el.setAttribute("expiry", String(EXPIRY));
+    el.setAttribute("models", "decision,text");
+    el.addEventListener("change", function () {
+      state.apiKey = el.apiKey || null;
+      if (state.apiKey) { $("pollen").textContent = "Pollen connected"; clearNotice(); }
+      mountConnect();
+      render();
+    });
+    mount.appendChild(el);
+  }
+
+  // ── Models ────────────────────────────────────────────────────────────────
+  function loadModels() {
+    fetch(API + "/models", { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) return;
+        var items = Array.isArray(d) ? d : (d.data || d.models || []);
+        var dec = items.filter(function (m) { return (m.category || "").toLowerCase() === "decision"; });
+        if (dec.length < 1) return;
+        state.models = dec.map(function (m) { return { name: m.name, title: m.title || m.name }; });
+        fillModels();
+      })
+      .catch(function () {});
+  }
+  function fillModels() {
+    var sel = $("mind-model");
+    var current = sel.value;
+    sel.innerHTML = "";
+    state.models.forEach(function (m) {
+      var o = document.createElement("option");
+      o.value = m.name;
+      o.textContent = m.title;
+      sel.appendChild(o);
+    });
+    if (current) sel.value = current;
+  }
+
+  // ── One agent's intention for the day ─────────────────────────────────────
+  function askIntention(agent) {
+    var others = state.agents.filter(function (a) { return a.id !== agent.id; }).map(function (a) {
+      return { name: a.name, playing: a.playing, boredom: Math.round(a.boredom) };
+    });
+    var body = {
+      model: $("mind-model").value,
+      state: {
+        world: "an empty world with no tasks, no goals, and no one giving instructions",
+        day: state.day,
+        you: { name: agent.name, character: agent.trait, boredom: Math.round(agent.boredom), playing: agent.playing },
+        others: others,
+        game: state.game
+          ? { name: state.game.name, rules: state.game.rules, bornOnDay: state.game.bornDay, players: state.agents.filter(function (a) { return a.playing; }).map(function (a) { return a.name; }) }
+          : null,
+        history: recentDays()
+      },
+      questions: {
+        intention: {
+          type: "choice",
+          instructions: "What do you do with this day? Nobody needs anything from you.",
+          criteria: {
+            invent: CHOICES.invent.blurb,
+            join: CHOICES.join.blurb,
+            revise: CHOICES.revise.blurb,
+            wander: CHOICES.wander.blurb,
+            rest: CHOICES.rest.blurb
+          }
+        }
+      }
+    };
+    return fetch(API + "/alpha/decisions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + state.apiKey },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().catch(function () { return null; }).then(function (data) {
+        if (!r.ok) {
+          var e = new Error((data && data.error && data.error.message) || ("Request failed (" + r.status + ")"));
+          e.status = r.status;
+          throw e;
+        }
+        var ans = data && data.answers && data.answers.intention;
+        if (!ans || !ans.choice) throw new Error("The model returned no choice.");
+        return {
+          choice: String(ans.choice).toLowerCase(),
+          confidence: typeof ans.confidence === "number" ? ans.confidence : null,
+          probabilities: ans.probabilities || null
+        };
+      });
+    });
+  }
+
+  function recentDays() {
+    return Array.prototype.slice.call($("log").children).slice(0, 5).map(function (li) {
+      return li.getAttribute("data-summary") || li.textContent.trim();
+    }).reverse();
+  }
+
+  // ── The day ───────────────────────────────────────────────────────────────
+  function advanceDay() {
+    if (state.busy) return;
+    if (!state.apiKey) {
+      setNotice("Connect your Pollen first: their decisions are billed to you, so there is nothing to decide until you authorise.", true);
+      return;
+    }
+    state.busy = true;
+    render();
+    var pending = state.agents.map(function (a) {
+      return askIntention(a).then(function (ans) { return { agent: a, ans: ans }; });
+    });
+
+    Promise.all(pending).then(function (results) {
+      var lines = [];
+      results.forEach(function (r) { r.agent.last = r.ans; });
+
+      // Resolve in a stable order so a day always plays out the same way.
+      var order = { invent: 0, join: 1, revise: 2, wander: 3, rest: 4 };
+      results.sort(function (x, y) { return order[x.ans.choice] - order[y.ans.choice]; });
+
+      results.forEach(function (r) {
+        var a = r.agent, pick = r.ans.choice;
+        if (pick === "invent") {
+          if (state.game && state.agents.some(function (x) { return x.playing; })) {
+            // Something already runs; the invention becomes a rule instead.
+            addRule(a, lines);
+          } else {
+            state.game = {
+              name: gameName(),
+              rules: [randomRule()],
+              startedBy: a.name,
+              bornDay: state.day
+            };
+            a.playing = true;
+            a.boredom = Math.max(0, a.boredom - 30);
+            lines.push({ kind: "invent", text: a.name + " invents something to do out of nothing: " + state.game.name + "." });
+          }
+        } else if (pick === "join") {
+          if (state.game) {
+            if (!a.playing) {
+              a.playing = true;
+              a.boredom = Math.max(0, a.boredom - 25);
+              lines.push({ text: a.name + " joins " + state.game.name + "." });
+            } else {
+              lines.push({ text: a.name + " keeps playing " + state.game.name + "." });
+            }
+          } else {
+            a.boredom = Math.min(100, a.boredom + 6);
+            lines.push({ text: a.name + " looks for a game to join. There isn't one." });
+          }
+        } else if (pick === "revise") {
+          if (state.game) addRule(a, lines);
+          else {
+            a.boredom = Math.min(100, a.boredom + 4);
+            lines.push({ text: a.name + " tries to argue about rules that do not exist yet." });
+          }
+        } else if (pick === "wander") {
+          a.playing = false;
+          a.boredom = Math.min(100, a.boredom + 3);
+          lines.push({ text: a.name + " wanders off to look at the horizon." });
+        } else {
+          a.playing = state.game ? a.playing : false;
+          a.boredom = Math.min(100, a.boredom + 8);
+          lines.push({ text: a.name + " does nothing at all." });
+        }
+      });
+
+      // Boredom drift: playing is absorbing, idleness creeps up.
+      state.agents.forEach(function (a) {
+        if (a.playing) a.boredom = Math.max(0, a.boredom - 10);
+        else a.boredom = Math.min(100, a.boredom + 9);
+      });
+
+      // A game nobody plays is forgotten.
+      if (state.game && !state.agents.some(function (a) { return a.playing; })) {
+        lines.push({ text: "Nobody is playing " + state.game.name + ". It is forgotten." });
+        state.game = null;
+      }
+
+      if (state.game && state.game.rules.length > MAX_RULES) state.game.rules = state.game.rules.slice(0, MAX_RULES);
+
+      addDayLog(lines);
+      state.day += 1;
+      placeAgents();
+      state.busy = false;
+      save();
+      render();
+
+      if (state.day > MAX_DAYS) {
+        setNotice("Sixty days have passed in an empty world. The world is saved; start a new one whenever you like.");
+        $("advance").disabled = true;
+      }
+    }).catch(function (err) {
+      state.busy = false;
+      render();
+      if (err && err.status === 402) {
+        setNotice("That day ran past the Pollen budget you authorised. Raise it on Connect, or top up at enter.pollinations.ai.", true);
+      } else if (err && err.status === 401) {
+        setNotice("Your Pollen authorisation expired or was revoked. Reconnect to let them keep going.", true);
+      } else {
+        setNotice((err && err.message) || "The day did not resolve. Try again.", true);
+      }
+    });
+  }
+
+  function addRule(agent, lines) {
+    if (!state.game) return;
+    if (state.game.rules.length >= MAX_RULES) {
+      // At the cap, a rule replaces the oldest one.
+      state.game.rules.shift();
+    }
+    var rule = randomRule(state.game.rules);
+    state.game.rules.push(rule);
+    agent.playing = true;
+    agent.boredom = Math.max(0, agent.boredom - 12);
+    lines.push({ kind: "invent", text: agent.name + " argues for a new rule: " + rule });
+  }
+
+  function gameName() {
+    var a = GAME_WORDS_A[Math.floor(Math.random() * GAME_WORDS_A.length)];
+    var b = GAME_WORDS_B[Math.floor(Math.random() * GAME_WORDS_B.length)];
+    return a + " " + b;
+  }
+  function randomRule(existing) {
+    var pool = RULES.filter(function (r) { return !existing || existing.indexOf(r) === -1; });
+    if (!pool.length) pool = RULES;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // ── Their voices (one text call) ──────────────────────────────────────────
+  function letThemTalk() {
+    if (!state.apiKey || state.busy) return;
+    if (!state.game) { setNotice("There is nothing to talk about yet. Advance a day first."); return; }
+    state.busy = true;
+    render();
+    var textModel = "openai/gpt-5.4-nano";
+    var prompt = "Three agents with no tasks invented a game to pass the time. " +
+      "Game: " + state.game.name + ". Rules: " + state.game.rules.join(" | ") + ". " +
+      "Players: " + state.agents.filter(function (a) { return a.playing; }).map(function (a) { return a.name; }).join(", ") + ". " +
+      "Sable is restless, Otto is careful about fairness, Wren drifts away. " +
+      "Write three short lines, one per agent, in their own voice, about the game. No stage directions, no labels, just the lines.";
+
+    fetch(API + "/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + state.apiKey },
+      body: JSON.stringify({ model: textModel, messages: [{ role: "user", content: prompt }], max_tokens: 180 })
+    }).then(function (r) {
+      return r.json().catch(function () { return null; }).then(function (d) {
+        if (!r.ok) {
+          var e = new Error((d && d.error && d.error.message) || ("Request failed (" + r.status + ")"));
+          e.status = r.status;
+          throw e;
+        }
+        var out = d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+        if (!out) throw new Error("No answer came back.");
+        $("talk-out").textContent = out.trim();
+        state.busy = false;
+        render();
+      });
+    }).catch(function (err) {
+      state.busy = false;
+      render();
+      setNotice((err && err.message) || "They stayed quiet.", true);
+    });
+  }
+
+  // ── Rendering ─────────────────────────────────────────────────────────────
+  function placeAgents() {
+    var field = $("field");
+    if (!field) return;
+    field.querySelectorAll(".agent").forEach(function (n) { n.remove(); });
+    var players = state.agents.filter(function (a) { return a.playing; });
+    var wanderers = state.agents.filter(function (a) { return !a.playing; });
+    players.forEach(function (a, i) {
+      var angle = (-90 + (360 / Math.max(players.length, 1)) * i) * Math.PI / 180;
+      a.x = 50 + Math.cos(angle) * 16;
+      a.y = 46 + Math.sin(angle) * 20;
+    });
+    wanderers.forEach(function (a, i) {
+      a.x = 10 + i * 13;
+      a.y = 82;
+    });
+    state.agents.forEach(function (a) {
+      var el = document.createElement("div");
+      el.className = "agent" + (a.playing ? " playing" : " off");
+      el.style.left = a.x + "%";
+      el.style.top = a.y + "%";
+      el.innerHTML = '<div class="fig">' + a.glyph + "</div>" +
+        '<div class="nm">' + a.name + "</div>" +
+        '<div class="st">' + (a.playing ? "playing" : "on their own") + "</div>";
+      field.appendChild(el);
+    });
+  }
+
+  function render() {
+    $("day-label").textContent = "Day " + state.day;
+    var players = state.agents.filter(function (a) { return a.playing; }).length;
+    $("world-mood").textContent = state.game
+      ? players + (players === 1 ? " player" : " players") + " · " + state.game.name
+      : "the world is empty";
+
+    var pastime = $("pastime");
+    if (state.game) {
+      pastime.className = "pastime";
+      $("pastime-name").textContent = state.game.name;
+      $("pastime-msg").textContent = "invented by " + state.game.startedBy + " on day " + state.game.bornDay;
+      var ul = $("pastime-rules");
+      ul.innerHTML = "";
+      state.game.rules.forEach(function (r) {
+        var li = document.createElement("li");
+        li.textContent = r;
+        ul.appendChild(li);
+      });
+    } else {
+      pastime.className = "pastime none";
+      $("pastime-name").textContent = "nothing yet";
+      $("pastime-msg").textContent = "They have nothing to do and no one to please.";
+      $("pastime-rules").innerHTML = "";
+    }
+
+    var minds = $("minds");
+    minds.innerHTML = "";
+    state.agents.forEach(function (a) {
+      var row = document.createElement("div");
+      row.className = "row";
+      var who = document.createElement("div");
+      who.className = "who";
+      who.textContent = a.glyph + " " + a.name;
+      var col = document.createElement("div");
+      var needs = document.createElement("div");
+      needs.className = "needs";
+      needs.innerHTML =
+        '<div class="need bored"><span>boredom</span><span class="track"><i style="width:' + Math.round(a.boredom) + '%"></i></span><span>' + Math.round(a.boredom) + "</span></div>";
+      var pick = document.createElement("div");
+      pick.className = "pick";
+      if (a.last) {
+        var label = (CHOICES[a.last.choice] || {}).label || a.last.choice;
+        var conf = a.last.confidence === null ? "" : " · " + Math.round(a.last.confidence * 100) + "% sure";
+        pick.textContent = "yesterday: " + label + conf;
+      } else {
+        pick.textContent = "has not chosen yet";
+      }
+      col.appendChild(needs);
+      col.appendChild(pick);
+      row.appendChild(who);
+      row.appendChild(col);
+      minds.appendChild(row);
+    });
+
+    $("advance").disabled = state.busy || state.day > MAX_DAYS;
+    $("auto").disabled = state.busy || !state.apiKey || state.day > MAX_DAYS;
+    $("talk").disabled = state.busy || !state.apiKey || !state.game;
+    $("reset").disabled = state.busy || (!state.game && state.day === 1);
+  }
+
+  function addDayLog(lines) {
+    var log = $("log");
+    var li = document.createElement("li");
+    li.className = "day";
+    var d = document.createElement("span");
+    d.className = "d";
+    d.textContent = "day " + state.day;
+    li.appendChild(d);
+    lines.forEach(function (l, i) {
+      if (i > 0) li.appendChild(document.createElement("br"));
+      li.appendChild(document.createTextNode(l.text));
+    });
+    li.setAttribute("data-summary", "day " + state.day + ": " + lines.map(function (l) { return l.text; }).join(" ").slice(0, 220));
+    log.insertBefore(li, log.firstChild);
+  }
+
+  function setNotice(msg, isErr) {
+    var n = $("notice");
+    if (!msg) { n.hidden = true; n.textContent = ""; return; }
+    n.hidden = false;
+    n.className = "notice" + (isErr ? " err" : "");
+    n.textContent = msg;
+  }
+  function clearNotice() { setNotice(""); }
+
+  function newWorld() {
+    state.day = 1;
+    state.game = null;
+    state.agents = AGENTS.map(function (a, i) {
+      return { id: a.id, name: a.name, glyph: a.glyph, trait: a.trait, boredom: 55 + i * 7, playing: false, last: null, x: 30 + i * 20, y: 60 };
+    });
+    $("log").innerHTML = "";
+    $("talk-out").textContent = "";
+    clearNotice();
+    save();
+    placeAgents();
+    render();
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  function boot() {
+    fillModels();
+    mountConnect();
+    loadModels();
+
+    var saved = load();
+    if (saved) {
+      state.day = saved.day || 1;
+      state.game = saved.game || null;
+      if (Array.isArray(saved.agents) && saved.agents.length === AGENTS.length) {
+        state.agents = saved.agents.map(function (a, i) {
+          return { id: a.id, name: a.name, glyph: a.glyph, trait: a.trait, boredom: a.boredom, playing: !!a.playing, last: a.last || null, x: 30 + i * 20, y: 60 };
+        });
+      }
+      if (saved.lastVisit) {
+        var awayDays = Math.floor((Date.now() - saved.lastVisit) / 86400000);
+        if (awayDays >= 1) {
+          setNotice("You were away for " + awayDays + (awayDays === 1 ? " day" : " days") + ". They kept the world going without you; advance a day to see what they do next.");
+        }
+      }
+      addDayLog([{ text: "The world you left is still here: day " + state.day + (state.game ? ", playing " + state.game.name : ", still nothing to do") + "." }]);
+    }
+
+    placeAgents();
+    render();
+
+    $("advance").addEventListener("click", advanceDay);
+    $("auto").addEventListener("click", function () {
+      if (state.busy || state.day > MAX_DAYS) return;
+      advanceDay();
+      var iv = setInterval(function () {
+        if (state.busy || state.day > MAX_DAYS || !state.apiKey) { clearInterval(iv); return; }
+        advanceDay();
+      }, 1600);
+      setTimeout(function () { clearInterval(iv); }, 1600 * 12);
+    });
+    $("talk").addEventListener("click", letThemTalk);
+    $("reset").addEventListener("click", newWorld);
+    $("mind-model").addEventListener("change", render);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
+</script>
+</body>
+</html>
