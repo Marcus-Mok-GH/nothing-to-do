@@ -232,11 +232,12 @@
   ];
 
   var FALLBACK_MODELS = [
-    { name: "typesafe/jev-1.14", title: "Jev 1.14" },
-    { name: "jaredpalmer/kev-4b", title: "Kev 4B" },
-    { name: "microsoft/microsoft-decision-1", title: "Microsoft-Decision-1" },
-    { name: "perplexity/pplx-decider-v1.2", title: "Decider v1.2" },
-    { name: "vllm-sr/d3", title: "D3" }
+    { name: "microsoft/microsoft-decision-1", title: "Microsoft-Decision-1", paidOnly: false },
+    { name: "vllm-sr/d3", title: "D3", paidOnly: false },
+    { name: "respan/span-01-lite", title: "Span-01 Lite", paidOnly: false },
+    { name: "typesafe/jev-1.14", title: "Jev 1.14", paidOnly: true },
+    { name: "jaredpalmer/kev-4b", title: "Kev 4B", paidOnly: true },
+    { name: "perplexity/pplx-decider-v1.2", title: "Decider v1.2", paidOnly: true }
   ];
 
   var state = {
@@ -318,7 +319,10 @@
         var items = Array.isArray(d) ? d : (d.data || d.models || []);
         var dec = items.filter(function (m) { return (m.category || "").toLowerCase() === "decision"; });
         if (dec.length < 1) return;
-        state.models = dec.map(function (m) { return { name: m.name, title: m.title || m.name }; });
+        dec.sort(function (a, b) { return !!a.paid_only - !!b.paid_only; });
+        state.models = dec.map(function (m) {
+          return { name: m.name, title: (m.title || m.name) + (m.paid_only ? " (paid)" : ""), paidOnly: !!m.paid_only };
+        });
         fillModels();
       })
       .catch(function () {});
